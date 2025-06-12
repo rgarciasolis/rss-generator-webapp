@@ -407,7 +407,6 @@
                 } catch (error) {
                     throw new Error(`Error al procesar la URL: ${error.message}`);
                 }
-            }
 
             extractArticles(doc, baseUrl, customSelector, maxItems) {
                 const selectors = customSelector ? 
