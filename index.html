@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS Generator - Crea feeds RSS desde cualquier URL</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .form-section {
+            padding: 40px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            padding: 40px;
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .feed-preview {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .feed-url {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            margin-bottom: 15px;
+        }
+
+        .feed-item {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .feed-item h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .feed-item p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .feed-item .meta {
+            font-size: 0.9rem;
+            color: #999;
+            margin-top: 10px;
+        }
+
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: #218838;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .advanced-options {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .advanced-options h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .main-card {
+                margin: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 RSS Generator</h1>
+            <p>Crea feeds RSS desde cualquier URL de forma automática</p>
+        </div>
+
+        <div class="main-card">
+            <div class="form-section">
+                <form id="rss-form">
+                    <div class="form-group">
+                        <label for="url">URL del sitio web *</label>
+                        <input type="url" id="url" name="url" required 
+                               placeholder="https://ejemplo.com/blog" />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="title">Título del feed</label>
+                            <input type="text" id="title" name="title" 
+                                   placeholder="Se detectará automáticamente" />
+                        </div>
+                        <div class="form-group">
+                            <label for="description">Descripción</label>
+                            <input type="text" id="description" name="description" 
+                                   placeholder="Se detectará automáticamente" />
+                        </div>
+                    </div>
+
+                    <div class="advanced-options">
+                        <h3>⚙️ Opciones Avanzadas</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="selector">Selector CSS personalizado</label>
+                                <input type="text" id="selector" name="selector" 
+                                       placeholder="article, .post, .entry" />
+                            </div>
+                            <div class="form-group">
+                                <label for="max-items">Máximo de artículos</label>
+                                <select id="max-items" name="max-items">
+                                    <option value="10">10 artículos</option>
+                                    <option value="20" selected>20 artículos</option>
+                                    <option value="50">50 artículos</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="generate-btn" id="generate-btn">
+                        🚀 Generar Feed RSS
+                    </button>
+                </form>
+            </div>
+
+            <div class="results-section" id="results-section">
+                <div id="status" class="status"></div>
+                <div id="feed-preview" class="feed-preview"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class RSSGenerator {
+            constructor() {
+                this.form = document.getElementById('rss-form');
+                this.resultsSection = document.getElementById('results-section');
+                this.statusDiv = document.getElementById('status');
+                this.previewDiv = document.getElementById('feed-preview');
+                this.generateBtn = document.getElementById('generate-btn');
+                
+                this.init();
+            }
+
+            init() {
+                this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+            }
+
+            async handleSubmit(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this.form);
+                const url = formData.get('url');
+                const title = formData.get('title');
+                const description = formData.get('description');
+                const selector = formData.get('selector');
+                const maxItems = parseInt(formData.get('max-items'));
+
+                this.showLoading();
+                
+                try {
+                    const articles = await this.scrapeArticles(url, selector, maxItems);
+                    const feedData = this.generateFeedData(articles, url, title, description);
+                    const rssXml = this.generateRSSXML(feedData);
+                    
+                    this.showSuccess(rssXml, feedData);
+                } catch (error) {
+                    this.showError(error.message);
+                }
+            }
+
+            async scrapeArticles(url, customSelector, maxItems) {
+                this.updateStatus('🔍 Analizando la página web...', 'loading');
+                
+                try {
+                    // Simulamos el scraping con CORS proxy
+                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+                    const response = await fetch(proxyUrl);
+                    const data = await response.json();
+                    
+                    if (!data.contents) {
+                        throw new Error('No se pudo acceder a la URL proporcionada');
+                    }
+
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.contents, 'text/html');
+                    
+                    this.updateStatus('📰 Extrayendo artículos...', 'loading');
+                    
+                    const articles = this.extractArticles(doc, url, customSelector, maxItems);
+                    
+                    if (articles.length === 0) {
+                        throw new Error('No se encontraron artículos en la página');
+                    }
+                    
+                    return articles;
+                } catch (error) {
+                    throw new Error(`Error al procesar la URL: ${error.message}`);
+                }
+            }
+
+            extractArticles(doc, baseUrl, customSelector, maxItems) {
+                const selectors = customSelector ? 
+                    [customSelector] : 
+                    [
+                        'article',
+                        '.post',
+                        '.entry',
+                        '.article',
+                        '.news-item',
+                        '.blog-post',
+                        '[class*="post"]',
+                        '[class*="article"]'
+                    ];
+
+                let articles = [];
+                
+                for (const selector of selectors) {
+                    const elements = doc.querySelectorAll(selector);
+                    
+                    for (const element of elements) {
+                        const article = this.extractArticleData(element, baseUrl);
+                        if (article && articles.length < maxItems) {
+                            articles.push(article);
+                        }
+                    }
+                    
+                    if (articles.length >= maxItems) break;
+                }
+
+                return articles.slice(0, maxItems);
+            }
+
+            extractArticleData(element, baseUrl) {
+                try {
+                    // Extraer título
+                    const titleElement = element.querySelector('h1, h2, h3, h4, h5, h6, .title, .headline');
+                    const title = titleElement ? titleElement.textContent.trim() : '';
+                    
+                    if (!title || title.length < 10) return null;
+                    
+                    // Extraer URL
+                    const linkElement = element.querySelector('a[href]') || element.closest('a[href]');
+                    const url = linkElement ? this.resolveUrl(linkElement.href, baseUrl) : '';
+                    
+                    if (!url) return null;
+                    
+                    // Extraer descripción/contenido
+                    const contentElement = element.querySelector('p, .excerpt, .summary, .description');
+                    const description = contentElement ? contentElement.textContent.trim() : '';
+                    
+                    // Extraer imagen
+                    const imgElement = element.querySelector('img');
+                    const imageUrl = imgElement ? this.resolveUrl(imgElement.src, baseUrl) : '';
+                    
+                    // Extraer fecha (aproximada)
+                    const dateElement = element.querySelector('[datetime], .date, .published');
+                    const pubDate = dateElement ? 
+                        new Date(dateElement.getAttribute('datetime') || dateElement.textContent) :
+                        new Date();
+                    
+                    return {
+                        title,
+                        url,
+                        description: description || title,
+                        imageUrl,
+                        pubDate,
+                        content: this.extractFullContent(element)
+                    };
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            extractFullContent(element) {
+                // Extraer contenido completo del artículo
+                const contentSelectors = [
+                    '.content', '.post-content', '.entry-content',
+                    '.article-content', '.body', '.text'
+                ];
+                
+                for (const selector of contentSelectors) {
+                    const contentEl = element.querySelector(selector);
+                    if (contentEl) {
+                        return contentEl.innerHTML;
+                    }
+                }
+                
+                // Fallback: usar todo el contenido del elemento
+                return element.innerHTML;
+            }
+
+            resolveUrl(url, baseUrl) {
+                try {
+                    return new URL(url, baseUrl).href;
+                } catch {
+                    return url;
+                }
+            }
+
+            generateFeedData(articles, sourceUrl, customTitle, customDescription) {
+                const urlObj = new URL(sourceUrl);
+                
+                return {
+                    title: customTitle || `RSS Feed - ${urlObj.hostname}`,
+                    description: customDescription || `Contenido automático de ${urlObj.hostname}`,
+                    link: sourceUrl,
+                    items: articles.map(article => ({
+                        title: article.title,
+                        link: article.url,
+                        description: article.description,
+                        content: article.content,
+                        pubDate: article.pubDate.toUTCString(),
+                        guid: article.url,
+                        imageUrl: article.imageUrl
+                    }))
+                };
+            }
+
+            generateRSSXML(feedData) {
+                const escapeXml = (text) => {
+                    if (!text) return '';
+                    return text.replace(/[<>&'"]/g, (char) => {
+                        switch (char) {
+                            case '<': return '&lt;';
+                            case '>': return '&gt;';
+                            case '&': return '&amp;';
+                            case '"': return '&quot;';
+                            case "'": return '&#39;';
+                            default: return char;
+                        }
+                    });
+                };
+
+                let rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/">
+    <channel>
+        <title>${escapeXml(feedData.title)}</title>
+        <link>${escapeXml(feedData.link)}</link>
+        <description>${escapeXml(feedData.description)}</description>
+        <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+        <generator>RSS Generator WebApp</generator>
+        <language>es-es</language>
+`;
+
+                feedData.items.forEach(item => {
+                    rss += `
+        <item>
+            <title>${escapeXml(item.title)}</title>
+            <link>${escapeXml(item.link)}</link>
+            <description>${escapeXml(item.description)}</description>
+            <content:encoded><![CDATA[${item.content}]]></content:encoded>
+            <pubDate>${item.pubDate}</pubDate>
+            <guid isPermaLink="true">${escapeXml(item.guid)}</guid>`;
+            
+                    if (item.imageUrl) {
+                        rss += `
+            <media:thumbnail url="${escapeXml(item.imageUrl)}" />`;
+                    }
+                    
+                    rss += `
+        </item>`;
+                });
+
+                rss += `
+    </channel>
+</rss>`;
+
+                return rss;
+            }
+
+            showLoading() {
+                this.generateBtn.disabled = true;
+                this.generateBtn.innerHTML = '<span class="spinner"></span>Generando...';
+                this.resultsSection.classList.add('show');
+                this.updateStatus('🚀 Iniciando generación de RSS...', 'loading');
+            }
+
+            showSuccess(rssXml, feedData) {
+                this.generateBtn.disabled = false;
+                this.generateBtn.innerHTML = '🚀 Generar Feed RSS';
+                
+                this.updateStatus(`✅ Feed RSS generado exitosamente con ${feedData.items.length} artículos`, 'success');
+                
+                // Crear URL de descarga
+                const blob = new Blob([rssXml], { type: 'application/rss+xml' });
+                const url = URL.createObjectURL(blob);
+                
+                this.previewDiv.innerHTML = `
+                    <h3>📡 Tu Feed RSS está listo</h3>
+                    <div class="feed-url">
+                        <strong>Contenido XML generado:</strong>
+                        <button class="copy-btn" onclick="this.copyRSS('${btoa(rssXml)}')">📋 Copiar XML</button>
+                        <a href="${url}" download="feed.xml" class="copy-btn" style="text-decoration: none; margin-left: 10px;">💾 Descargar XML</a>
+                    </div>
+                    
+                    <h4>📰 Vista previa de artículos:</h4>
+                    ${feedData.items.slice(0, 3).map(item => `
+                        <div class="feed-item">
+                            <h3>${item.title}</h3>
+                            <p>${item.description}</p>
+                            <div class="meta">
+                                <strong>URL:</strong> <a href="${item.link}" target="_blank">${item.link}</a><br>
+                                <strong>Fecha:</strong> ${item.pubDate}
+                            </div>
+                        </div>
+                    `).join('')}
+                    
+                    ${feedData.items.length > 3 ? `<p><em>... y ${feedData.items.length - 3} artículos más</em></p>` : ''}
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px;">
+                        <h4>📚 Cómo usar tu feed:</h4>
+                        <ol>
+                            <li><strong>Descargar:</strong> Haz clic en "Descargar XML" para obtener el archivo</li>
+                            <li><strong>Alojar:</strong> Sube el archivo a tu servidor web o GitHub Pages</li>
+                            <li><strong>Suscribirse:</strong> Usa la URL del archivo en tu lector RSS favorito</li>
+                        </ol>
+                    </div>
+                `;
+                
+                // Añadir método de copia al window
+                window.copyRSS = (encodedXml) => {
+                    const xml = atob(encodedXml);
+                    navigator.clipboard.writeText(xml).then(() => {
+                        alert('¡XML copiado al portapapeles!');
+                    });
+                };
+            }
+
+            showError(message) {
+                this.generateBtn.disabled = false;
+                this.generateBtn.innerHTML = '🚀 Generar Feed RSS';
+                
+                this.updateStatus(`❌ Error: ${message}`, 'error');
+                
+                this.previewDiv.innerHTML = `
+                    <h3>🔧 Sugerencias para solucionar el problema:</h3>
+                    <ul>
+                        <li><strong>Verifica la URL:</strong> Asegúrate de que sea correcta y accesible</li>
+                        <li><strong>Prueba con selector personalizado:</strong> Inspecciona la página y usa un selector CSS específico</li>
+                        <li><strong>CORS:</strong> Algunos sitios bloquean el acceso desde otras páginas</li>
+                        <li><strong>Estructura del sitio:</strong> El sitio puede no tener una estructura estándar de artículos</li>
+                    </ul>
+                `;
+            }
+
+            updateStatus(message, type) {
+                this.statusDiv.textContent = message;
+                this.statusDiv.className = `status ${type}`;
+            }
+        }
+
+        // Inicializar la aplicación
+        document.addEventListener('DOMContentLoaded', () => {
+            new RSSGenerator();
+        });
+    </script>
+</body>
+</html>
