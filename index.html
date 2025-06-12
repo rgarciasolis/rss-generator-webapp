@@ -343,10 +343,49 @@
 
             async scrapeArticles(url, customSelector, maxItems) {
                 this.updateStatus('🔍 Analizando la página web...', 'loading');
-                
-                try {
-                    // Simulamos el scraping con CORS proxy
-                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+
+                const proxies = [
+                    (u) => `https://corsproxy.io/?${u}`,
+                    (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+                    (u) => `https://thingproxy.freeboard.io/fetch/${u}`
+                ];
+
+                let lastError = null;
+
+                for (const proxy of proxies) {
+                    try {
+                        const proxyUrl = proxy(url);
+                        const response = await fetch(proxyUrl);
+
+                        const isAllOrigins = proxyUrl.includes('allorigins');
+                        const content = isAllOrigins 
+                            ? (await response.json()).contents
+                            : await response.text();
+
+                        if (!content) throw new Error('Contenido vacío');
+
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(content, 'text/html');
+
+                        this.updateStatus('📰 Extrayendo artículos...', 'loading');
+
+                        const articles = this.extractArticles(doc, url, customSelector, maxItems);
+
+                        if (articles.length === 0) {
+                            throw new Error('No se encontraron artículos en la página');
+                        }
+
+                        return articles;
+
+                    } catch (error) {
+                        lastError = error;
+                        console.warn(`Proxy fallido: ${proxy(url)} → ${error.message}`);
+                        continue;
+                    }
+                }
+
+                throw new Error(`No se pudo acceder a la URL con ningún proxy. Último error: ${lastError.message}`);
+            }`;
                     const response = await fetch(proxyUrl);
                     const data = await response.json();
                     
