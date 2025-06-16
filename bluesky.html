@@ -293,12 +293,12 @@
 
   <script>
     // Proxies CORS más confiables y actualizados
-    const CORS_PROXIES = [
-      'https://api.codetabs.com/v1/proxy?quest=',
-      'https://api.allorigins.win/get?url=',
-      'https://corsproxy.io/?',
-      'https://thingproxy.freeboard.io/fetch/'
-    ];
+    // const CORS_PROXIES = [
+    //   'https://api.codetabs.com/v1/proxy?quest=',
+    //   'https://api.allorigins.win/get?url=',
+    //   'https://corsproxy.io/?',
+    //   'https://thingproxy.freeboard.io/fetch/'
+    // ];
     
     let currentProxyIndex = 0;
     let eventsCache = [];
@@ -398,17 +398,17 @@
       try {
         const testUrl = 'https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=test&limit=1';
         
-        for (const proxy of CORS_PROXIES) {
-          try {
-            console.log(`Probando proxy: ${proxy}`);
-            await fetchWithProxy(testUrl, proxy);
-            updateConnectionStatus('online');
-            currentProxyIndex = CORS_PROXIES.indexOf(proxy);
-            return true;
-          } catch (error) {
-            console.log(`Proxy ${proxy} falló: ${error.message}`);
-          }
-        }
+        // for (const proxy of CORS_PROXIES) {
+        //   try {
+        //     console.log(`Probando proxy: ${proxy}`);
+        //     await fetchWithProxy(testUrl, proxy);
+        //     updateConnectionStatus('online');
+        //     currentProxyIndex = CORS_PROXIES.indexOf(proxy);
+        //     return true;
+        //   } catch (error) {
+        //     console.log(`Proxy ${proxy} falló: ${error.message}`);
+        //   }
+        // }
         
         updateConnectionStatus('offline');
         return false;
@@ -426,7 +426,7 @@
       }
       
       const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=%23${hashtag}&limit=10`;
-      const proxy = CORS_PROXIES[currentProxyIndex];
+      // const proxy = CORS_PROXIES[currentProxyIndex];
       
       return await fetchWithProxy(url, proxy);
     }
