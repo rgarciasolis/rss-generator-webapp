@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EventSky - Eventos desde Bluesky</title>
+  <script src="background.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      color: white;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .subtitle {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+    
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 2px solid rgba(255,255,255,0.3);
+      padding: 0.75rem 1.5rem;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    button:hover {
+      background: rgba(255,255,255,0.3);
+      border-color: rgba(255,255,255,0.5);
+      transform: translateY(-2px);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .event-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.5rem;
+    }
+    
+    .event {
+      background: rgba(255,255,255,0.95);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .event:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+    }
+    
+    .event-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      color: #4a5568;
+      flex-wrap: wrap;
+    }
+    
+    .event-date {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #2d3748;
+    }
+    
+    .event-time {
+      background: #667eea;
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    
+    .event-location {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      color: #4a5568;
+      flex-wrap: wrap;
+    }
+    
+    .event-artists {
+      margin-bottom: 1rem;
+    }
+    
+    .event-artists h3 {
+      color: #2d3748;
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+    
+    .artists-list {
+      color: #4a5568;
+      line-height: 1.4;
+    }
+    
+    .event-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 1rem;
+      border-top: 1px solid #e2e8f0;
+      font-size: 0.9rem;
+      color: #718096;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    
+    .author-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .bsky-link {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .bsky-link:hover {
+      text-decoration: underline;
+    }
+    
+    .loading, .error, .empty {
+      text-align: center;
+      padding: 3rem;
+      color: white;
+      font-size: 1.1rem;
+      grid-column: 1 / -1;
+    }
+    
+    .error {
+      background: rgba(252, 129, 129, 0.2);
+      border: 1px solid rgba(252, 129, 129, 0.3);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .empty {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .demo-notice {
+      background: rgba(255, 193, 7, 0.2);
+      border: 1px solid rgba(255, 193, 7, 0.3);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .stats {
+      text-align: center;
+      color: white;
+      margin-bottom: 1rem;
+      opacity: 0.9;
+    }
+    
+    .connection-status {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+    }
+    
+    .status-online {
+      background: rgba(34, 197, 94, 0.2);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      color: #16a34a;
+    }
+    
+    .status-offline {
+      background: rgba(252, 129, 129, 0.2);
+      border: 1px solid rgba(252, 129, 129, 0.4);
+      color: #dc2626;
+    }
+    
+    .status-demo {
+      background: rgba(255, 193, 7, 0.2);
+      border: 1px solid rgba(255, 193, 7, 0.4);
+      color: #d97706;
+    }
+    
+    @media (max-width: 768px) {
+      .event-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+      
+      .controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .connection-status {
+        position: relative;
+        top: auto;
+        right: auto;
+        margin-bottom: 1rem;
+        display: inline-block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="connection-status" id="connection-status"></div>
+    
+    <header>
+      <h1>🎤 EventSky</h1>
+      <p class="subtitle">Descubre eventos musicales desde Bluesky</p>
+    </header>
+    
+    <div class="controls">
+      <button onclick="loadEvents()" id="refresh-btn">
+        🔄 Buscar Eventos
+      </button>
+      <button onclick="loadEvents('demo')" id="demo-btn">
+        🎭 Ver Demo
+      </button>
+      <button onclick="testConnection()" id="test-btn">
+        🔌 Probar Conexión
+      </button>
+    </div>
+    
+    <div class="stats" id="stats" style="display: none;"></div>
+    
+    <div class="event-grid" id="event-list">
+      <div class="loading">
+        <p>🎵 Inicializando EventSky...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Proxies CORS más confiables y actualizados
+    const CORS_PROXIES = [
+      'https://api.codetabs.com/v1/proxy?quest=',
+      'https://api.allorigins.win/get?url=',
+      'https://corsproxy.io/?',
+      'https://thingproxy.freeboard.io/fetch/'
+    ];
+    
+    let currentProxyIndex = 0;
+    let eventsCache = [];
+    let connectionStatus = 'testing';
+    
+    // Datos de demostración para cuando fallan los proxies
+    const DEMO_EVENTS = [
+      {
+        author: { handle: 'musiclover.bsky.social' },
+        record: {
+          text: '🎤 ¡Gran evento musical! 📅 2024-12-20 🕒 20:00h 📍 Sala Apolo, Barcelona 🎶 Artistas: The Midnight, FM Attack, Timecop1983',
+          createdAt: '2024-12-15T10:00:00Z'
+        },
+        uri: 'at://did:plc:example1/app.bsky.feed.post/demo1'
+      },
+      {
+        author: { handle: 'eventpromoter.bsky.social' },
+        record: {
+          text: '#eventsky Festival de Invierno 📅 2024-12-22 🕒 18:30 📍 Palau de la Música, Valencia 🎶 Orquesta Sinfónica + Coro Gospel',
+          createdAt: '2024-12-14T15:30:00Z'
+        },
+        uri: 'at://did:plc:example2/app.bsky.feed.post/demo2'
+      },
+      {
+        author: { handle: 'conciertosmadrid.bsky.social' },
+        record: {
+          text: '🎵 Noche de Jazz #eventosky 📅 2024-12-25 🕒 21:00 📍 Café Central, Madrid 🎶 María Toledo Trio, Javier Colina',
+          createdAt: '2024-12-13T20:15:00Z'
+        },
+        uri: 'at://did:plc:example3/app.bsky.feed.post/demo3'
+      },
+      {
+        author: { handle: 'rockfestival.bsky.social' },
+        record: {
+          text: 'Rock en vivo! 📅 2024-12-28 🕒 19:00h 📍 WiZink Center, Madrid 🎶 Artistas: Amaral, Vetusta Morla, Love of Lesbian #evento',
+          createdAt: '2024-12-12T12:00:00Z'
+        },
+        uri: 'at://did:plc:example4/app.bsky.feed.post/demo4'
+      }
+    ];
+    
+    function updateConnectionStatus(status, message = '') {
+      const statusDiv = document.getElementById('connection-status');
+      connectionStatus = status;
+      
+      switch (status) {
+        case 'online':
+          statusDiv.className = 'connection-status status-online';
+          statusDiv.textContent = '🟢 Conectado a Bluesky';
+          break;
+        case 'offline':
+          statusDiv.className = 'connection-status status-offline';
+          statusDiv.textContent = '🔴 Sin conexión';
+          break;
+        case 'demo':
+          statusDiv.className = 'connection-status status-demo';
+          statusDiv.textContent = '🎭 Modo Demo';
+          break;
+        case 'testing':
+          statusDiv.className = 'connection-status status-demo';
+          statusDiv.textContent = '🔄 Probando conexión...';
+          break;
+      }
+    }
+    
+    async function fetchWithProxy(url, proxy) {
+      const fullUrl = proxy.includes('allorigins') 
+        ? proxy + encodeURIComponent(url)
+        : proxy + encodeURIComponent(url);
+        
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Manejar diferentes formatos de respuesta de proxies
+      if (proxy.includes('allorigins') && data.contents) {
+        return JSON.parse(data.contents);
+      }
+      
+      return data;
+    }
+    
+    async function testConnection() {
+      updateConnectionStatus('testing');
+      const testBtn = document.getElementById('test-btn');
+      testBtn.disabled = true;
+      
+      try {
+        const testUrl = 'https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=test&limit=1';
+        
+        for (const proxy of CORS_PROXIES) {
+          try {
+            console.log(`Probando proxy: ${proxy}`);
+            await fetchWithProxy(testUrl, proxy);
+            updateConnectionStatus('online');
+            currentProxyIndex = CORS_PROXIES.indexOf(proxy);
+            return true;
+          } catch (error) {
+            console.log(`Proxy ${proxy} falló: ${error.message}`);
+          }
+        }
+        
+        updateConnectionStatus('offline');
+        return false;
+      } catch (error) {
+        updateConnectionStatus('offline');
+        return false;
+      } finally {
+        testBtn.disabled = false;
+      }
+    }
+    
+    async function fetchEvents(hashtag = 'eventsky') {
+      if (connectionStatus === 'offline') {
+        throw new Error('Sin conexión a Bluesky');
+      }
+      
+      const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=%23${hashtag}&limit=10`;
+      const proxy = CORS_PROXIES[currentProxyIndex];
+      
+      return await fetchWithProxy(url, proxy);
+    }
+    
+    function parseEventText(text) {
+      const patterns = {
+        date: [
+          /(?:📅|fecha|date)[:\s]*(\d{4}-\d{1,2}-\d{1,2})/i,
+          /(?:📅|fecha|date)[:\s]*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i,
+          /(\d{1,2}\s+de\s+\w+\s+\d{4})/i,
+          /(\d{1,2}\/\d{1,2}\/\d{2,4})/,
+          /(\d{4}-\d{1,2}-\d{1,2})/
+        ],
+        time: [
+          /(?:🕒|hora|time)[:\s]*([\d:]+\s*(?:am|pm|h)?)/i,
+          /(?:a\s+las|at)\s*([\d:]+\s*(?:am|pm|h)?)/i,
+          /([\d:]+\s*(?:am|pm|h))/i
+        ],
+        place: [
+          /(?:📍|lugar|place|venue)[:\s]*([^\n,]+)/i,
+          /(?:en|at)\s+([A-Za-z\s]+)(?:,|\n|$)/i
+        ],
+        city: [
+          /(?:ciudad|city|📍)[:\s]*[^,\n]*,\s*([^,\n]+)/i,
+          /,\s*([A-Za-z\s]+)(?:,|\n|$)/
+        ],
+        artists: [
+          /(?:🎶|artistas?|artists?|music)[:\s]*([^\n]+)/i,
+          /(?:con|with|featuring)\s+([^\n]+)/i,
+          /([A-Za-z\s&,]+)(?:\s+en\s+vivo|\s+live)/i
+        ]
+      };
+      
+      function extractWithPatterns(patternArray, defaultValue = '') {
+        for (const pattern of patternArray) {
+          const match = text.match(pattern);
+          if (match && match[1]) {
+            return match[1].trim();
+          }
+        }
+        return defaultValue;
+      }
+      
+      const eventData = {
+        date: extractWithPatterns(patterns.date, 'Fecha por confirmar'),
+        time: extractWithPatterns(patterns.time, 'Hora por confirmar'),
+        place: extractWithPatterns(patterns.place, 'Lugar por confirmar'),
+        city: extractWithPatterns(patterns.city, ''),
+        artists: extractWithPatterns(patterns.artists, 'Por anunciar')
+      };
+      
+      // Limpiar datos
+      eventData.place = eventData.place.replace(/[📍🏢]/g, '').trim();
+      eventData.artists = eventData.artists.replace(/[🎶🎤🎵]/g, '').trim();
+      eventData.time = eventData.time.replace(/[🕒⏰]/g, '').trim();
+      
+      return eventData;
+    }
+    
+    function isEventPost(text) {
+      const eventKeywords = [
+        'eventsky', 'eventosky', 'evento', 'concierto', 'festival',
+        'música', 'music', 'live', 'vivo', 'show', 'performance',
+        '📅', '🕒', '📍', '🎶', '🎤', '🎵'
+      ];
+      
+      const lowerText = text.toLowerCase();
+      return eventKeywords.some(keyword => lowerText.includes(keyword));
+    }
+    
+    function createEventCard(post, eventData) {
+      const eventDiv = document.createElement('div');
+      eventDiv.className = 'event';
+      
+      const authorHandle = post.author?.handle || 'usuario-desconocido';
+      const postId = post.uri?.split('/').pop() || 'demo';
+      const postUrl = `https://bsky.app/profile/${authorHandle}/post/${postId}`;
+      const createdAt = new Date(post.record?.createdAt || post.indexedAt).toLocaleDateString('es-ES');
+      
+      eventDiv.innerHTML = `
+        <div class="event-header">
+          <span class="event-date">📅 ${eventData.date}</span>
+          <span class="event-time">${eventData.time}</span>
+        </div>
+        
+        <div class="event-location">
+          <span>📍 ${eventData.place}</span>
+          ${eventData.city ? `<span>, ${eventData.city}</span>` : ''}
+        </div>
+        
+        <div class="event-artists">
+          <h3>🎶 Artistas</h3>
+          <div class="artists-list">${eventData.artists}</div>
+        </div>
+        
+        <div class="event-footer">
+          <div class="author-info">
+            <span>Por @${authorHandle}</span>
+            <span>•</span>
+            <span>${createdAt}</span>
+          </div>
+          <a href="${postUrl}" target="_blank" class="bsky-link" rel="noopener">Ver en Bluesky</a>
+        </div>
+      `;
+      
+      return eventDiv;
+    }
+    
+    async function loadEvents(mode = 'live') {
+      const container = document.getElementById('event-list');
+      const refreshBtn = document.getElementById('refresh-btn');
+      const demoBtn = document.getElementById('demo-btn');
+      const statsDiv = document.getElementById('stats');
+      
+      // Deshabilitar botones
+      refreshBtn.disabled = true;
+      demoBtn.disabled = true;
+      
+      if (mode === 'demo') {
+        updateConnectionStatus('demo');
+        container.innerHTML = '<div class="loading"><p>🎭 Cargando eventos de demostración...</p></div>';
+        
+        setTimeout(() => {
+          container.innerHTML = '';
+          
+          DEMO_EVENTS.forEach(post => {
+            const text = post.record?.text || '';
+            const eventData = parseEventText(text);
+            const eventCard = createEventCard(post, eventData);
+            container.appendChild(eventCard);
+          });
+          
+          statsDiv.innerHTML = `🎭 Mostrando ${DEMO_EVENTS.length} eventos de demostración`;
+          statsDiv.style.display = 'block';
+          
+          // Agregar aviso de demo
+          const demoNotice = document.createElement('div');
+          demoNotice.className = 'demo-notice';
+          demoNotice.innerHTML = `
+            <p>🎭 <strong>Modo Demostración</strong></p>
+            <p>Estos son eventos de ejemplo. Para ver eventos reales, prueba la conexión y usa "Buscar Eventos".</p>
+          `;
+          container.insertBefore(demoNotice, container.firstChild);
+          
+          refreshBtn.disabled = false;
+          demoBtn.disabled = false;
+        }, 1000);
+        
+        return;
+      }
+      
+      container.innerHTML = '<div class="loading"><p>🔍 Buscando eventos en Bluesky...</p></div>';
+      statsDiv.style.display = 'none';
+      
+      try {
+        // Probar conexión primero
+        const isConnected = await testConnection();
+        if (!isConnected) {
+          throw new Error('No se pudo conectar con Bluesky');
+        }
+        
+        const hashtags = ['eventsky', 'eventosky'];
+        let allPosts = [];
+        
+        for (const hashtag of hashtags) {
+          try {
+            const data = await fetchEvents(hashtag);
+            if (data.posts) {
+              allPosts = allPosts.concat(data.posts);
+            }
+          } catch (error) {
+            console.log(`Error buscando #${hashtag}:`, error.message);
+          }
+        }
+        
+        if (allPosts.length === 0) {
+          container.innerHTML = `
+            <div class="empty">
+              <p>🔍 No se encontraron eventos</p>
+              <p>Intenta con el modo demo para ver ejemplos</p>
+            </div>
+          `;
+          return;
+        }
+        
+        const eventPosts = allPosts.filter(post => {
+          const text = post.record?.text || '';
+          return isEventPost(text);
+        });
+        
+        if (eventPosts.length === 0) {
+          container.innerHTML = `
+            <div class="empty">
+              <p>📝 No se encontraron eventos válidos</p>
+              <p>Prueba el modo demo mientras tanto</p>
+            </div>
+          `;
+          return;
+        }
+        
+        eventsCache = eventPosts;
+        container.innerHTML = '';
+        
+        eventPosts.forEach(post => {
+          const text = post.record?.text || '';
+          const eventData = parseEventText(text);
+          const eventCard = createEventCard(post, eventData);
+          container.appendChild(eventCard);
+        });
+        
+        statsDiv.innerHTML = `📊 ${eventPosts.length} eventos encontrados de ${allPosts.length} posts analizados`;
+        statsDiv.style.display = 'block';
+        
+      } catch (error) {
+        console.error('Error cargando eventos:', error);
+        container.innerHTML = `
+          <div class="error">
+            <p>❌ No se pudieron cargar eventos</p>
+            <p>Problemas de conexión con Bluesky</p>
+            <p><button onclick="loadEvents('demo')" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer;">🎭 Ver Demo</button></p>
+          </div>
+        `;
+        updateConnectionStatus('offline');
+      } finally {
+        refreshBtn.disabled = false;
+        demoBtn.disabled = false;
+      }
+    }
+    
+    // Inicializar aplicación
+    document.addEventListener('DOMContentLoaded', async () => {
+      updateConnectionStatus('testing');
+      
+      // Probar conexión al inicio
+      const isConnected = await testConnection();
+      
+      if (isConnected) {
+        loadEvents('live');
+      } else {
+        // Si no hay conexión, mostrar mensaje y opción de demo
+        const container = document.getElementById('event-list');
+        container.innerHTML = `
+          <div class="error">
+            <p>🌐 Sin conexión a Bluesky</p>
+            <p>Los servidores proxy no están disponibles</p>
+            <p><button onclick="loadEvents('demo')" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.75rem 1.5rem; border-radius: 12px; cursor: pointer; font-size: 1rem;">🎭 Ver Eventos Demo</button></p>
+          </div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>
